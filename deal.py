@@ -1,41 +1,45 @@
 #-*- coding=utf-8 -*-
+import sys
 import pandas as pd
+from io import StringIO, BytesIO
+import json
 
-pd.set_option('max_columns', 200)
-pd.set_option('max_rows', 5000)
-pd.set_option('display.float_format', lambda x: '%.2f' %x)
+pd.set_option('display.width', 120)
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_colwidth', 16)
+pd.set_option('display.precision', 2)
 
-#df = pd.read_excel("./book1.xlsx", sheet_name='Sheet1')
-file = pd.read_csv("./hushenA20210225.csv", encoding="GB18030", header=0)
-df = pd.DataFrame(file)
-items_cnt = len(df)
+f = open(sys.argv[1], 'r')
+json_txt = f.read()
+f.close()
 
-str_titles = str(df.ix[0])
-titles = str_titles.split('\\t')
-titles_cnt = len(titles) - 4
+T = json.loads(json_txt)
 
-for i in range(0, titles_cnt - 1):
-    if (str(titles[i]) == '代码'):
-        print(titles[i], end='')
-    if (str(titles[i]) == '市净率'):
-        print(titles[i])
+data = pd.read_csv(sys.argv[2], sep=",", encoding="GB18030", header=0, dtype={'代码':str})
 
+df = pd.DataFrame(data, columns=['代码', '名称', '市盈(TTM)','资产负债率%','每股净资','现价','地区','细分行业','每股收益','每股未分配','每股公积','总资产(亿)'])
+print(df.shape)
 
-for row_idx in range (1, len(df) - 1):
-    for col_idx in range (0, titles_cnt - 1):
-        if (str(titles[col_idx]) == '代码'):
-            print(str(df.ix[row_idx][0]).split('\t')[col_idx], end='')
-        if (str(titles[col_idx]) == '市净率'):
-            print(str(df.ix[row_idx][0]).split('\t')[col_idx])
+df = df[(df['市盈(TTM)'] != '--  ')]
+print(df.shape)
 
-row_idx = 1
-column_idx = 0
-print(str(df.ix[row_idx][0]).split('\t')[column_idx])
+df['每股收益'] = df['每股收益'].str.replace('㈠','')
+df['每股收益'] = df['每股收益'].str.replace('㈢','')
+df['每股收益'] = df['每股收益'].str.replace('㈣','')
+df[['市盈(TTM)','每股净资','每股收益','每股未分配','每股公积']] = df[['市盈(TTM)','每股净资','每股收益','每股未分配','每股公积']].apply(pd.to_numeric)
+df['实价比'] = (df['每股净资'] + df['每股收益'] + df['每股未分配'] + df['每股公积'])/df['现价']
+df = df[(df['实价比'] > float(T['MIN_SJB'])) & (df['实价比'] < float(T['MAX_SJB']))]
+print(df.shape)
 
-data1 = df.ix[0].values
-data2 = df.ix[1].values
+df = df[(df['资产负债率%'] > T['MIN_FZ']) & (df['资产负债率%'] < T['MAX_FZ'])]
+print(df.shape)
+df[['市盈(TTM)','每股净资','每股收益','每股未分配','每股公积']] = df[['市盈(TTM)','每股净资','每股收益','每股未分配','每股公积']].apply(pd.to_numeric)
+df = df[(df['总资产(亿)'] > T['MIN_ZZC'])]
+print(df.shape)
+df['市盈(TTM)'] = df['市盈(TTM)'].apply(pd.to_numeric)
+df = df[(df['市盈(TTM)'] > T['MIN_TTM']) & (df['市盈(TTM)'] < T['MAX_TTM'])]
+print(df.shape)
+df = df.sort_values(by = '市盈(TTM)')
 
-print("{0}".format(data1))
-print("{0}".format(data2))
-
-
+print(df[T['DISP_COLS']])
