@@ -43,6 +43,10 @@ def main(csv_fn, strategy_fn):
   if not MC_COLUMN_NAME in df:
     MC_COLUMN_NAME = '总市值'
 
+  YSZK_COLUMN_NAME = '应收账款(亿)'
+  if not YSZK_COLUMN_NAME in df:
+    YSZK_COLUMN_NAME = '应收帐款(亿)' 
+
   #df['上市日期'] = pd.to_datetime(df['上市日期'])
 
   # elimit 市盈(TTM) == '-- '
@@ -71,8 +75,8 @@ def main(csv_fn, strategy_fn):
   df['每股收益'] = df['每股收益'].str.replace('㈣','')
 
   df[MC_COLUMN_NAME] = df[MC_COLUMN_NAME].str.replace('亿','')
-  df[['市盈(TTM)','股息率%',MC_COLUMN_NAME,'总资产(亿)','应收账款(亿)','每股净资','每股收益','每股未分配','每股公积','市净率','资产负债率%','利润同比%']] \
-  = df[['市盈(TTM)','股息率%',MC_COLUMN_NAME,'总资产(亿)','应收账款(亿)','每股净资','每股收益','每股未分配','每股公积','市净率','资产负债率%','利润同比%']].apply(pd.to_numeric)
+  df[['市盈(TTM)','股息率%',MC_COLUMN_NAME,'总资产(亿)',YSZK_COLUMN_NAME,'每股净资','每股收益','每股未分配','每股公积','市净率','资产负债率%','利润同比%']] \
+  = df[['市盈(TTM)','股息率%',MC_COLUMN_NAME,'总资产(亿)',YSZK_COLUMN_NAME,'每股净资','每股收益','每股未分配','每股公积','市净率','资产负债率%','利润同比%']].apply(pd.to_numeric)
 
   df[['净益率%']] = df[['净益率%']].apply(pd.to_numeric)
 
@@ -82,7 +86,7 @@ def main(csv_fn, strategy_fn):
 
   df['未分比'] = df['每股未分配'] / df['每股净资']
   df['净价比'] = 1/df['市净率']
-  df['应总比'] = df['应收账款(亿)'] / df['总资产(亿)']
+  df['应总比'] = df[YSZK_COLUMN_NAME] / df['总资产(亿)']
 
   df = df[(df['未分比'] > float(T['MIN_WFB'])) & (df['未分比'] < float(T['MAX_WFB']))]
   print(df.shape[0:1], ' WFB')
