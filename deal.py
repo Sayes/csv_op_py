@@ -27,30 +27,37 @@ def main(csv_fn, strategy_fn):
   pd.set_option('display.unicode.east_asian_width', True)
   pd.set_option('display.width', 160)
 
-
+  # open strategy file, with json
   f = open(strategy_fn, 'r')
   json_txt = f.read()
   f.close()
   T = json.loads(json_txt)
 
-  data = pd.read_csv(csv_fn, sep=",", encoding="GB18030", header=0, dtype={'代码':str})
-  df = pd.DataFrame(data, columns=['代码', '名称', '市盈(TTM)','资产负债率%','每股净资','现价','股息率%','净益率%','地区','细分行业','每股收益','每股未分配','每股公积','AB股总市值','总资产(亿)','应收账款(亿)','上市日期','市净率','净利润率%','毛利率%','利润同比%'])
+  # read stock data, with csv
+  data = pd.read_csv(csv_fn, sep=",", encoding="GB18030", header=0, dtype=str)
+
+  df = pd.DataFrame(data)
   print(df.shape[0:1])
+
+  MC_COLUMN_NAME = 'AB股总市值'
+  if not MC_COLUMN_NAME in df:
+    MC_COLUMN_NAME = '总市值'
 
   #df['上市日期'] = pd.to_datetime(df['上市日期'])
 
+  # elimit 市盈(TTM) == '-- '
   df = df[(df['市盈(TTM)'] != '--  ')]
   print(df.shape[0:1], ' TTM elim --')
 
   # 如果 MIN_JYL = 0, 则不考虑这项指标
   if T['MIN_JYL'] > 0:
-    df = df[(df['净益率%']   != '--  ')]
+    df = df[(df['净益率%'] != '--  ')]
     print(df.shape[0:1], ' JYL elim --')
 
 
   # 如果 MIN_MLL = 0, 则不考虑这项指标
   if T['MIN_MLL'] > 0:
-    df = df[(df['毛利率%']   != '--  ')]
+    df = df[(df['毛利率%'] != '--  ')]
     print(df.shape[0:1], ' MLL elim --')
 
   df['净益率%'] = df['净益率%'].str.replace('㈠','')
@@ -63,9 +70,9 @@ def main(csv_fn, strategy_fn):
   df['每股收益'] = df['每股收益'].str.replace('㈢','')
   df['每股收益'] = df['每股收益'].str.replace('㈣','')
 
-  df['AB股总市值'] = df['AB股总市值'].str.replace('亿','')
-
-  df[['市盈(TTM)','股息率%','AB股总市值','总资产(亿)','应收账款(亿)','每股净资','每股收益','每股未分配','每股公积','市净率']] = df[['市盈(TTM)','股息率%','AB股总市值','总资产(亿)','应收账款(亿)','每股净资','每股收益','每股未分配','每股公积','市净率']].apply(pd.to_numeric)
+  df[MC_COLUMN_NAME] = df[MC_COLUMN_NAME].str.replace('亿','')
+  df[['市盈(TTM)','股息率%',MC_COLUMN_NAME,'总资产(亿)','应收账款(亿)','每股净资','每股收益','每股未分配','每股公积','市净率','资产负债率%','利润同比%']] \
+  = df[['市盈(TTM)','股息率%',MC_COLUMN_NAME,'总资产(亿)','应收账款(亿)','每股净资','每股收益','每股未分配','每股公积','市净率','资产负债率%','利润同比%']].apply(pd.to_numeric)
 
   df[['净益率%']] = df[['净益率%']].apply(pd.to_numeric)
 
@@ -95,7 +102,7 @@ def main(csv_fn, strategy_fn):
   df = df[(df['资产负债率%'] > T['MIN_FZ']) & (df['资产负债率%'] < T['MAX_FZ'])]
   print(df.shape[0:1], ' FZ')
 
-  df = df[(df['AB股总市值'] > T['MIN_ZSZ']) & (df['AB股总市值'] < T['MAX_ZSZ'])]
+  df = df[(df[MC_COLUMN_NAME] > T['MIN_ZSZ']) & (df[MC_COLUMN_NAME] < T['MAX_ZSZ'])]
   print(df.shape[0:1], ' ZSZ')
 
   df = df[(df['市盈(TTM)'] > T['MIN_TTM']) & (df['市盈(TTM)'] < T['MAX_TTM'])]
